@@ -1,0 +1,5 @@
+{
+    // Change the path of the Python interpreter as needed
+    "python.analysis.extraPaths": ["%appdata%\\local\\programs\\python\\python37-32\\Include"],
+    "editor.formatOnSave": true,
+}

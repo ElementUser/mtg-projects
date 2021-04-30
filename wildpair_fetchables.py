@@ -6,48 +6,51 @@
 
 # Wild Pair card details: https://gatherer.wizards.com/pages/card/Details.aspx?multiverseid=416953
 
-import scrython, requests
+import requests
+import scrython
+import time
 
 # Decklist from my Arcades deck: https://deckstats.net/decks/144326/1493742-arcades-wall-midrange-aggro/en
 
 # Deckstats API calls
-# URL = "https://deckstats.net/api.php"
+URL = "https://deckstats.net/api.php"
 
-# PARAMS = {
-#     "action":  "get_deck",
-#     "id_type": "saved",
-#     "owner_id": 144326,
-#     "id": 1493742,
-#     "response_type": "json",
-# }
+# Change the 'owner_id' and 'id' fields based on the deck you want to look up
+PARAMS = {
+    "action": "get_deck",
+    "id_type": "saved",
+    "owner_id": 144326,
+    "id": 1493742,
+    "response_type": "json",
+}
 
-# response = requests.get(url=URL, params=PARAMS)
-# print(response.text)
-
-
-# Temp stuff
-deckCreatureList = [
-    "Angelic Wall", "Arcades, the Strategist", "Axebane Guardian", "Birds of Paradise", "Carven Caryatid", "Consulate Skygate", "Crashing Drawbridge", "Drift of Phantasms", "Fortified Rampart", "Glacial Wall", "Hover Barrier", "Jeskai Barricade", "Jungle Barrier", 
-    "Marble Titan", "Oathsworn Giant", "Orator of Ojutai", "Overgrown Battlement", "Perimeter Captain", "Resolute Watchdog", "Shield Sphere", "Stalwart Shield-Bearers", "Sunscape Familiar", "Tetsuko Umezawa, Fugitive", "Tree of Redemption",
-    "Vine Trellis", "Wall of Blossoms", "Wall of Denial", "Wall of Frost", "Wall of Junk", "Wall of Mulch", "Wall of Omens", "Wall of Runes", "Wall of Shards", "Wall of Stolen Identity", "Wall of Tanglecord", "Wall of Tears", "Wall of Vines"
-]
-
+response = requests.get(url=URL, params=PARAMS)
+jsonBody = response.json()
 totalPowerToughnessDict = {}
-finalString = "Power & Toughness Sum map for Wild Pair:\n"
 
-for creature in deckCreatureList:
-    card = scrython.cards.Named(fuzzy=creature)
-    sumPowerToughness = int(card.power()) + int(card.toughness())
-    if str(sumPowerToughness) not in totalPowerToughnessDict:
-        totalPowerToughnessDict[str(sumPowerToughness)] = [card.name()]
-    else:
-        totalPowerToughnessDict[str(sumPowerToughness)].append(card.name())
+# Parse JSON response
+for section in jsonBody.get("sections"):
+    for deckstatsCard in section.get("cards"):
+        # This call is the slowest step in the Script, but API rate limits have to be respected.
+        # Reference: https://github.com/NandaScott/Scrython#key-notes
+        time.sleep(0.1)
+        card = scrython.cards.Named(fuzzy=deckstatsCard.get("name"))
+
+        # Only proceed if the card type is a creature
+        if "creature".lower() in card.type_line().lower():
+            sumPowerToughness = int(card.power()) + int(card.toughness())
+            if sumPowerToughness not in totalPowerToughnessDict:
+                totalPowerToughnessDict[sumPowerToughness] = [card.name()]
+            else:
+                # TODO: Sort entries in the dictionary alphabetically in-place
+                totalPowerToughnessDict[sumPowerToughness].append(card.name())
 
 # sorted(dict) sorts the dictionary by key (ascending)
+finalString = ""
 for powerToughnessScore in sorted(totalPowerToughnessDict):
-    finalString += "\n" + powerToughnessScore + ": "
+    finalString += "\n" + str(powerToughnessScore) + ": "
     for creature in totalPowerToughnessDict[powerToughnessScore]:
         finalString += creature + ", "
-    finalString = finalString.rstrip(', ')
+    finalString = finalString.rstrip(", ")
 
 print(finalString)
